@@ -31,6 +31,7 @@ library(igraph)
 library(Hmisc)
 library(randomForest)
 library(caret)
+library(leaflet)
 
 ```
 
@@ -52,6 +53,19 @@ colnames(cluster2) <- c("SEZ2011", "cluster")
 census2@data <- census@data %>% left_join(cluster2, by = c("SEZ2011"))
 pal <- c("blue", "green", "red")
 plot(census, col=pal[census@data$cluster], bg="white",lwd=0.2)
+
+# plotting deprivations
+dep <- read_delim("data/census/temporal_deprivation.csv", delim=",", col_names=TRUE)
+census2@data <- census2@data %>% left_join(dep, dep = c("SEZ2011"))
+pal <- c("blue", "green", "red")
+
+qpal <- colorQuantile("Reds", census2@data$dep11, n = 7)
+raster::plot(census2, col=qpal(census2@data$dep11), lwd=0.1)
+
+
+
+
+
 
 cluster3 <- read_delim("data/CDR/hash/k3_cluster.csv", delim=",", col_names=TRUE)
 colnames(cluster3) <- c("SEZ2011", "cluster3")

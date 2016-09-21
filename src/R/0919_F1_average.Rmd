@@ -24,7 +24,6 @@ library(hydroGOF)
 library(fields)
 library(MASS)
 library(e1071)
-library(raster)
 library(Hmisc)
 library(randomForest)
 library(caret)
@@ -34,7 +33,7 @@ library(reshape2)
 
 
 ```{r}
-setwd("/Users/myeong/git/DSSG/DSSG2016-SensingTheCensus/")
+setwd("/Users/mlee/git/DSSG2016-SensingTheCensus/")
 census = read.csv("data/0917_features.csv")  
 
 colnames(census)[9] <- "dep11"
@@ -60,7 +59,7 @@ census$cluster3 <- as.factor(census$cluster3)
 
 ```{r}
 proportions <- seq(50, 90, 10)
-num_test <- 20
+num_test <- 35
 
 f1_bin <- matrix(NA,nrow=length(proportions),ncol=7)
 colnames(f1_bin) <- c("1_poor","2","3","4","5","6","7_rich")

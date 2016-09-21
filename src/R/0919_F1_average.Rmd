@@ -70,11 +70,12 @@ calculate_rf_table <- function (variable){
   rand_error_table <- matrix(NA,nrow=length(proportions),ncol=4)
   colnames(rand_error_table) <- c("train", "accuracy", "error", "F1")
   
-  if (variable == "street_oa" | variable == "cdr_osm_lag" | variable == "street+oa+lag"){
-    target <- census[!is.na(census$commercial),]
-  } else{
-    target <- census
-  }
+#   if (variable == "street_oa" | variable == "cdr_osm_lag" | variable == "street+oa+lag"){
+#     target <- census[!is.na(census$commercial),]
+#   } else{
+#     target <- census
+#   }
+  target <- census
   
   for (i in 1:length(proportions) ){
     temp_table <- matrix(nrow=num_test, ncol=3)
@@ -112,6 +113,9 @@ calculate_rf_table <- function (variable){
       }else if (variable == "spatial_lag"){
         model <- randomForest (formula("dep_class_7 ~ spatial_lag"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$spatial_lag) & !is.na(testset$dep_class_7),]
+      }else if (variable == "spatial_lag_sq"){
+        model <- randomForest (formula("dep_class_7 ~ spatial_lag_square"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit)
+        testset <- testset[!is.na(testset$spatial_lag) & !is.na(testset$dep_class_7),]
       } else if (variable == "volume"){
         model <- randomForest (formula("dep_class_7 ~ calls"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$calls),]
@@ -133,6 +137,13 @@ calculate_rf_table <- function (variable){
       } else if (variable == "past_lag"){
         model <- randomForest (formula("dep_class_7 ~ dep01 + spatial_lag"), data=trainset,na.action=na.omit, mtry = 3, importance=TRUE, proximity=TRUE)
         testset <- testset[!is.na(testset$spatial_lag) & !is.na(testset$dep01) ,]
+      } else if (variable == "cdr_lag_sq"){
+        ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ calls + region_based_rate + page_rank + eigen_cent + entropy + spatial_lag_square"), data=trainset,na.action=na.omit, mtry = 3, importance=TRUE, proximity=TRUE),
+                       error = function(e) {
+                                  print("error in RF..")
+                                })
+        if(inherits(ee, "error")) next
+        testset <- testset[!is.na(testset$spatial_lag_square) & !is.na(testset$page_rank) ,]
       } else if (variable == "past_lag_cdr"){
         model <- randomForest (formula("dep_class_7 ~ calls + region_based_rate + page_rank + eigen_cent + entropy + dep01 + spatial_lag"), data=trainset, importance=TRUE, proximity=TRUE, mtry=3,na.action=na.omit)
         testset <- testset[!is.na(testset$calls) & !is.na(testset$region_based_rate) & !is.na(testset$page_rank) & !is.na(testset$eigen_cent) & !is.na(testset$entropy) & !is.na(testset$dep01) & !is.na(testset$spatial_lag),]
@@ -152,7 +163,7 @@ calculate_rf_table <- function (variable){
         model <- randomForest (formula("dep_class_7 ~ closeness + betweenness"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$betweenness) & !is.na(testset$closeness),]
       } else if (variable == "street_oa"){
-        trainset$dep_class_7 <- factor(trainset$dep_class_7)
+#         trainset$dep_class_7 <- factor(trainset$dep_class_7)
         ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ closeness + betweenness + commercial + third_places + comm_service"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit),
                        error = function(e) {
                                   print("error in RF..")
@@ -175,7 +186,7 @@ calculate_rf_table <- function (variable){
         model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + closeness + betweenness"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$spatial_lag_square) & !is.na(testset$closeness),]
       } else if (variable == "street+oa+lag"){
-        trainset$dep_class_7 <- factor(trainset$dep_class_7)
+#         trainset$dep_class_7 <- factor(trainset$dep_class_7)
         ee<- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + closeness + betweenness + commercial + third_places + comm_service"), data=trainset,mtry=3, importance=TRUE, proximity=TRUE, na.action=na.omit), 
                       error = function(e){
                         print("error...")
@@ -183,7 +194,7 @@ calculate_rf_table <- function (variable){
         if(inherits(ee, "error")) next
         testset <- testset[!is.na(testset$spatial_lag_square) & !is.na(testset$closeness)& !is.na(testset$commercial)& !is.na(testset$dep_class_7),]
       }else if (variable == "cdr_osm_lag"){
-        trainset$dep_class_7 <- factor(trainset$dep_class_7)
+#         trainset$dep_class_7 <- factor(trainset$dep_class_7)
         ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + closeness + betweenness + region_based_rate + calls + page_rank + eigen_cent + entropy + cluster3 + commercial + third_places + comm_service"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit), 
                       error = function(e) {
                         print("error in RF..")
@@ -219,15 +230,12 @@ calculate_rf_table <- function (variable){
       F1 <- (2 * precision * recall) / (precision + recall)
       
       mean_F1 <- mean(F1, na.rm = TRUE)
-      temp_f1[j,] <- c(F1[1],F1[2],F1[3],F1[4],F1[5],F1[6],F1[7])
                       
       temp_table[j,] <- c(sum(diag)/n, 1 - sum(diag)/n, mean_F1)
     }
     temp_table <- apply(temp_table, 2, mean)     
-    temp_f1 <- apply(temp_f1, 2, mean) 
     
     rand_error_table[i,] <- c(proportions[i], temp_table["accuracy"], temp_table["error"], temp_table["F1"])
-    f1_bin[i,] <- c(temp_f1[1],temp_f1[2],temp_f1[3],temp_f1[4],temp_f1[5],temp_f1[6],temp_f1[7])
   }
   rand_error_table <- as.data.frame(rand_error_table)
   return (rand_error_table)
@@ -242,6 +250,7 @@ rand <- calculate_rf_table ("random")
 past <- calculate_rf_table ("past")
 density <- calculate_rf_table ("density")
 spatial_lag <- calculate_rf_table ("spatial_lag")
+spatial_lag_sq <- calculate_rf_table ("spatial_lag_sq")
 
 intro <- calculate_rf_table ("introversion")
 eigen_cent <- calculate_rf_table ("eigen_cent")
@@ -254,6 +263,7 @@ past_cdr <- calculate_rf_table ("past_cdr")
 past_lag <- calculate_rf_table ("past_lag")
 past_lag_cdr <- calculate_rf_table ("past_lag_cdr")
 cdr_lag <- calculate_rf_table ("cdr_lag")
+cdr_lag_sq <- calculate_rf_table ("cdr_lag_sq")
 cdr_k2 <- calculate_rf_table ("cdr_k2")
 cdr_k3 <- calculate_rf_table ("cdr_k3")
 
@@ -269,8 +279,8 @@ final2 <- calculate_rf_table ("cdr+osm+lag-oa")
 
 # Baseline Graph Drawing
 draw_graph_base <- function (column){
-  dd <- cbind(rand$train, density[,column], spatial_lag[,column], past[,column] )
-  colnames(dd) <- c("train", "density", "spatial_lag", "past")
+  dd <- cbind(density$train, density[,column], spatial_lag[,column], spatial_lag_sq[,column] )
+  colnames(dd) <- c("train", "density", "spatial_lag", "spatial_lag_sq")
 
   dd <- as.data.frame(dd)
   df <- melt(dd, id.vars='train')
@@ -440,8 +450,105 @@ write.csv(street_oa_lag, "data/results/street_oa_lag.csv")
 write.csv(street_lag, "data/results/street_lag.csv")
 write.csv(final, "data/results/cdr_osm_lag.csv")
 write.csv(final2, "data/results/cdr_street_lag.csv")
+write.csv(spatial_lag_sq, "data/results/average_predictions/spatial_lag_sq.csv")
 
 
 
+```
+
+
+
+# Drawings
+```{r}
+past <- read.csv("data/results/average_predictions/past.csv")
+density <- read.csv("data/results/average_predictions/density.csv")
+spatial_lag <- read.csv("data/results/average_predictions/spatial_lag.csv")
+intro <- read.csv("data/results/average_predictions/intro.csv")
+eigen_cent <- read.csv("data/results/average_predictions/eigen_cent.csv")
+entropy <- read.csv("data/results/average_predictions/entropy.csv")
+page_rank <- read.csv("data/results/average_predictions/page_rank.csv")
+cdr <- read.csv("data/results/average_predictions/cdr.csv")
+vol <- read.csv("data/results/average_predictions/vol.csv")
+past_cdr <- read.csv("data/results/average_predictions/past_cdr.csv")
+past_lag <- read.csv("data/results/average_predictions/past_lag.csv")
+past_lag_cdr <- read.csv("data/results/average_predictions/past_lag_cdr.csv")
+cdr_lag <- read.csv("data/results/average_predictions/cdr_lag.csv")
+cdr_k2 <- read.csv("data/results/average_predictions/cdr_k2.csv")
+cdr_k3 <- read.csv("data/results/average_predictions/cdr_k3.csv")
+betweenness <- read.csv("data/results/average_predictions/betweenness.csv")
+closeness <- read.csv("data/results/average_predictions/closeness.csv")
+street_network <- read.csv("data/results/average_predictions/street_network.csv")
+street_oa <- read.csv("data/results/average_predictions/street_oa.csv")
+street_oa_lag <- read.csv("data/results/average_predictions/street_oa_lag.csv")
+street_lag <- read.csv("data/results/average_predictions/street_lag.csv")
+final <- read.csv("data/results/average_predictions/cdr_osm_lag.csv")
+final2 <- read.csv("data/results/average_predictions/cdr_street_lag.csv")
+
+
+draw_comb2 <- function (column){
+  dd <- cbind(density$train, density[,column], spatial_lag[,column], cdr_k2[,column], 
+              cdr_k3[,column], cdr_lag[,column], cdr_lag_sq[,column])
+  colnames(dd) <- c("train", "density", "lag", "CDR + 2-cluster", 
+                    "CDR + 3-cluster","cdr+lag", "cdr+lag_sq")
+  dd <- as.data.frame(dd)
+  df <- melt(dd, id.vars='train')
+  colindex <- round(as.integer(as.factor(df$variable) ))
+  
+  ggplot(df, aes(x = train, y = value, shape=factor(variable)
+#                  colour=factor(variable))) +
+    )) +
+    geom_point(size = 3) +
+    geom_line() +
+    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
+    scale_y_continuous('F1 Score') +
+    theme_bw() + 
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+}
+
+draw_comb2("F1")
+
+
+# OSM Graph Drawing
+draw_graph <- function (column){
+  dd <- cbind(density$train, spatial_lag[,column], density[,column], betweenness[,column], closeness[,column], street_network[,column], street_oa[,column])
+  colnames(dd) <- c("train","spatial_lag", "density", "betweenness", "closeness", "street_network", "street+offering")
+
+  dd <- as.data.frame(dd)
+  df <- melt(dd, id.vars='train')
+  colindex <- round(as.integer(as.factor(df$variable) ))
+  
+  ggplot(df, aes(x = train, y = value, shape=factor(variable)
+#                  colour=factor(variable))) +
+    )) +
+    geom_point(size = 3) +
+    geom_line() +
+    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
+    scale_y_continuous('F1 Score') +
+    theme_bw() + 
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+}
+
+draw_graph("F1")
+
+#Final
+draw_comb3 <- function (column){
+  dd <- cbind(density$train, density[,column], spatial_lag[,column],street_oa_lag[,column], 
+              street_lag[,column], final[,column], final2[,column] )
+  colnames(dd) <- c("train", "density", "spatial_lag","street+oa+lag", 
+                    "street+lag","cdr+osm+lag", "cdr+street+lag")
+  dd <- as.data.frame(dd)
+  df <- melt(dd, id.vars='train')
+  colindex <- round(as.integer(as.factor(df$variable) ))
+  
+  ggplot(df, aes(x = train, y = value, shape=factor(variable))) +
+    geom_point(size = 3) +
+    geom_line() +
+    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
+#     scale_y_continuous('Prediction Rate',limits=c(0.98, 1)) +
+    theme_bw() + 
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+}
+
+draw_comb3("F1")
 ```
 

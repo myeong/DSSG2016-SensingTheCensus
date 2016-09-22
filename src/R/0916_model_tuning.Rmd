@@ -211,8 +211,9 @@ c1 <- as.data.frame(c1)
 c1$time <- c(1:288)
 c1$day <- ifelse(c1$time<=144, "weekday", "weekend")
 c1$day <- as.factor(c1$day)
+pal <- c("blue", "red", "yellow")
 
-ggplot(data=c1, aes(x=time, y=c1, group=day, colour=factor(day))) + geom_line() + xlab("10-minute Time Index") + ylab("Relative Call Amount, Cluster=1") + ylim(0,0.012)
+ggplot(data=c1, aes(x=time, y=c1, group=day,colour=factor(day))) + geom_line(size =2) + xlab("\nTime Index") + ylab("") + ylim(0,0.012) + theme_bw() + theme(axis.text=element_text(size=14), axis.title=element_text(size=16)) + scale_color_manual(values=c("black", "gray"))
 
 c2 <- time_series[time_series$cluster3 == 2,]
 c2 <- subset(c2, select = -c(region_id, cluster3) )
@@ -222,7 +223,7 @@ c2$time <- c(1:288)
 c2$day <- ifelse(c2$time<=144, "weekday", "weekend")
 c2$day <- as.factor(c2$day)
 
-ggplot(data=c2, aes(x=time, y=c2, group=day, colour=factor(day))) + geom_line() + xlab("10-minute Time Index") + ylab("Relative Call Amount, Cluster=2") + ylim(0,0.012)
+ggplot(data=c2, aes(x=time, y=c2, group=day, colour=factor(day))) + geom_line(size =2) + xlab("\nTime Index") + ylab("") + ylim(0,0.012) + theme_bw() + theme(axis.text=element_text(size=14), axis.title=element_text(size=16)) + scale_color_manual(values=c("black", "gray"))
 
 c3 <- time_series[time_series$cluster3 == 3,]
 c3 <- subset(c3, select = -c(region_id, cluster3) )
@@ -232,7 +233,7 @@ c3$time <- c(1:288)
 c3$day <- ifelse(c3$time<=144, "weekday", "weekend")
 c3$day <- as.factor(c3$day)
 
-ggplot(data=c3, aes(x=time, y=c3, group=day, colour=factor(day))) + geom_line() + xlab("10-minute Time Index") + ylab("Relative Call Amount, Cluster=3") + ylim(0,0.012)
+ggplot(data=c3, aes(x=time, y=c3, group=day, colour=factor(day))) + geom_line(size =2) + xlab("\nTime Index") + ylab("") + ylim(0,0.012) + theme_bw() + theme(axis.text=element_text(size=14), axis.title=element_text(size=16)) + scale_color_manual(values=c("black", "gray"))
 ```
 
 # Adding Cluster Factors

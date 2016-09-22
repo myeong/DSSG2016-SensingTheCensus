@@ -462,6 +462,7 @@ write.csv(spatial_lag_sq, "data/results/average_predictions/spatial_lag_sq.csv")
 past <- read.csv("data/results/average_predictions/past.csv")
 density <- read.csv("data/results/average_predictions/density.csv")
 spatial_lag <- read.csv("data/results/average_predictions/spatial_lag.csv")
+spatial_lag_sq <- read.csv("data/results/average_predictions/spatial_lag_sq.csv")
 intro <- read.csv("data/results/average_predictions/intro.csv")
 eigen_cent <- read.csv("data/results/average_predictions/eigen_cent.csv")
 entropy <- read.csv("data/results/average_predictions/entropy.csv")
@@ -485,10 +486,10 @@ final2 <- read.csv("data/results/average_predictions/cdr_street_lag.csv")
 
 
 draw_comb2 <- function (column){
-  dd <- cbind(density$train, density[,column], spatial_lag[,column], cdr_k2[,column], 
-              cdr_k3[,column], cdr_lag[,column], cdr_lag_sq[,column])
-  colnames(dd) <- c("train", "density", "lag", "CDR + 2-cluster", 
-                    "CDR + 3-cluster","cdr+lag", "cdr+lag_sq")
+  dd <- cbind(density$train, density[,column], spatial_lag_sq[,column],  
+              cdr_k3[,column], cdr_lag[,column])
+  colnames(dd) <- c("train", "density", "lag",  
+                    "CDR + 3-cluster","cdr+lag")
   dd <- as.data.frame(dd)
   df <- melt(dd, id.vars='train')
   colindex <- round(as.integer(as.factor(df$variable) ))
@@ -498,10 +499,10 @@ draw_comb2 <- function (column){
     )) +
     geom_point(size = 3) +
     geom_line() +
-    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
-    scale_y_continuous('F1 Score') +
+    scale_x_continuous('\nTrain Proportion (%)',limits=c(50,90)) + 
+    scale_y_continuous("",limits=c(0, 0.45)) +
     theme_bw() + 
-    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15)) + theme(axis.text=element_text(size=16), axis.title=element_text(size=16))
 }
 
 draw_comb2("F1")
@@ -509,8 +510,8 @@ draw_comb2("F1")
 
 # OSM Graph Drawing
 draw_graph <- function (column){
-  dd <- cbind(density$train, spatial_lag[,column], density[,column], betweenness[,column], closeness[,column], street_network[,column], street_oa[,column])
-  colnames(dd) <- c("train","spatial_lag", "density", "betweenness", "closeness", "street_network", "street+offering")
+  dd <- cbind(density$train, density[,column], spatial_lag_sq[,column], betweenness[,column], closeness[,column], street_network[,column], street_oa[,column])
+  colnames(dd) <- c("train","density", "spatial_lag", "betweenness", "closeness", "street_network", "street+offering")
 
   dd <- as.data.frame(dd)
   df <- melt(dd, id.vars='train')
@@ -521,17 +522,17 @@ draw_graph <- function (column){
     )) +
     geom_point(size = 3) +
     geom_line() +
-    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
-    scale_y_continuous('F1 Score') +
+    scale_x_continuous('\nTrain Proportion (%)',limits=c(50,90)) + 
+    scale_y_continuous("",limits=c(0, 0.45)) +
     theme_bw() + 
-    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15)) + theme(axis.text=element_text(size=16), axis.title=element_text(size=16))
 }
 
 draw_graph("F1")
 
 #Final
 draw_comb3 <- function (column){
-  dd <- cbind(density$train, density[,column], spatial_lag[,column],street_oa_lag[,column], 
+  dd <- cbind(density$train, density[,column], spatial_lag_sq[,column],street_oa_lag[,column], 
               street_lag[,column], final[,column], final2[,column] )
   colnames(dd) <- c("train", "density", "spatial_lag","street+oa+lag", 
                     "street+lag","cdr+osm+lag", "cdr+street+lag")
@@ -542,10 +543,10 @@ draw_comb3 <- function (column){
   ggplot(df, aes(x = train, y = value, shape=factor(variable))) +
     geom_point(size = 3) +
     geom_line() +
-    scale_x_continuous('Train Proportion (%)',limits=c(50,95)) + 
-#     scale_y_continuous('Prediction Rate',limits=c(0.98, 1)) +
+    scale_x_continuous('\nTrain Proportion (%)',limits=c(50,90)) + 
+    scale_y_continuous("",limits=c(0, 0.45)) +
     theme_bw() + 
-    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15))
+    geom_hline(yintercept=0) + theme(legend.text=element_text(size=15)) + theme(axis.text=element_text(size=16), axis.title=element_text(size=16))
 }
 
 draw_comb3("F1")

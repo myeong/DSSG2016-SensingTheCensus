@@ -58,8 +58,8 @@ census$cluster3 <- as.factor(census$cluster3)
 
 
 ```{r}
-proportions <- seq(50, 90, 10)
-num_test <- 35
+proportions <- seq(80, 80)
+num_test <- 10
 
 f1_bin <- matrix(NA,nrow=length(proportions),ncol=7)
 colnames(f1_bin) <- c("1_poor","2","3","4","5","6","7_rich")
@@ -70,6 +70,9 @@ calculate_rf_bin_f1 <- function (variable){
   f1_bin <- matrix(NA,nrow=length(proportions),ncol=8)
   colnames(f1_bin) <- c("train", "1_rich","2","3","4","5","6","7_poor")
   
+  accuracy <- matrix(NA,nrow=length(proportions),ncol=8)
+  colnames(accuracy) <- c("train", "1_rich","2","3","4","5","6","7_poor")
+    
   if (variable == "street_oa" | variable == "cdr+osm+lag" | variable == "street+oa+lag"){
     target <- census[!is.na(census$commercial),]
   } else{
@@ -82,6 +85,9 @@ calculate_rf_bin_f1 <- function (variable){
     
     temp_f1 <- matrix(nrow=num_test, ncol=7)
     colnames(temp_f1) <- c("1","2","3","4","5","6","7")
+    
+    temp_acc <- matrix(nrow=num_test, ncol=7)
+    colnames(temp_acc) <- c("1","2","3","4","5","6","7")    
     
     for (j in 1:num_test){
       index <- 1:nrow(target)
@@ -109,6 +115,9 @@ calculate_rf_bin_f1 <- function (variable){
       } else if (variable == "past"){
         model <- randomForest (formula("dep_class_7 ~ dep01"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$dep01),]       
+      } else if (variable == "c3"){
+        model <- randomForest (formula("dep_class_7 ~ cluster3"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit)
+        testset <- testset[!is.na(testset$cluster3),]       
       }else if (variable == "spatial_lag"){
         ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit), 
                        error = function(e){
@@ -116,6 +125,9 @@ calculate_rf_bin_f1 <- function (variable){
                        })
         if(inherits(ee, "error")) next
         testset <- testset[!is.na(testset$spatial_lag),]
+      }else if (variable == "spatial_lag_sq"){
+        model <- randomForest (formula("dep_class_7 ~ spatial_lag_square"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit)
+        testset <- testset[!is.na(testset$spatial_lag) & !is.na(testset$dep_class_7),]
       } else if (variable == "volume"){
         model <- randomForest (formula("dep_class_7 ~ calls"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$calls),]
@@ -144,12 +156,12 @@ calculate_rf_bin_f1 <- function (variable){
         model <- randomForest (formula("dep_class_7 ~ entropy + spatial_lag"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$spatial_lag) & !is.na(testset$entropy) ,]
       } else if (variable == "cdr_lag"){
-        ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_squares + calls + region_based_rate + page_rank + eigen_cent + entropy"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit),
+        ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + calls + region_based_rate + page_rank + eigen_cent + entropy"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit),
                        error = function(e){
                          print("error in RF...")
                        })
         if(inherits(ee, "error")) next
-        testset <- testset[!is.na(testset$calls) & !is.na(testset$region_based_rate) & !is.na(testset$page_rank) & !is.na(testset$eigen_cent) & !is.na(testset$entropy) & !is.na(testset$spatial_lag),]
+        testset <- testset[!is.na(testset$calls) & !is.na(testset$region_based_rate) & !is.na(testset$page_rank) & !is.na(testset$eigen_cent) & !is.na(testset$entropy) & !is.na(testset$spatial_lag_square),]
       } else if (variable == "betweenness"){
         model <- randomForest (formula("dep_class_7 ~ betweenness"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$betweenness),]
@@ -157,7 +169,7 @@ calculate_rf_bin_f1 <- function (variable){
         model <- randomForest (formula("dep_class_7 ~ closeness"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$closeness),]
       } else if (variable == "street_network"){
-        model <- randomForest (formula("dep_class_7 ~ closeness + betweenness"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit)
+        model <- randomForest (formula("dep_class_7 ~ closeness + betweenness"), data=trainset, importance=TRUE, proximity=TRUE, na.action=na.omit)
         testset <- testset[!is.na(testset$betweenness) & !is.na(testset$closeness),]
       } else if (variable == "street_oa"){
         ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ closeness + betweenness + commercial + third_places + comm_service"), data=trainset, mtry=3,importance=TRUE, proximity=TRUE, na.action=na.omit), 
@@ -196,6 +208,21 @@ calculate_rf_bin_f1 <- function (variable){
                        })
         if(inherits(ee, "error")) next
         testset <- testset[!is.na(testset$calls) & !is.na(testset$commercial) & !is.na(testset$closeness) & !is.na(testset$spatial_lag_square),]
+      } else if (variable == "cdr+street+lag"){
+        
+        ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + closeness + betweenness + region_based_rate + calls + page_rank + eigen_cent + entropy "), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit), 
+                       error = function(e){
+                         print("error in RF...")
+                       })
+        testset <- testset[!is.na(testset$calls) & !is.na(testset$closeness) & !is.na(testset$spatial_lag_square),]
+      } 
+      else if (variable == "cdr+cluster+street+lag"){
+        
+        ee <- tryCatch(model <- randomForest (formula("dep_class_7 ~ spatial_lag_square + closeness + betweenness + region_based_rate + calls + page_rank + eigen_cent + entropy + cluster3"), data=trainset,importance=TRUE, proximity=TRUE, na.action=na.omit), 
+                       error = function(e){
+                         print("error in RF...")
+                       })
+        testset <- testset[!is.na(testset$calls) & !is.na(testset$closeness) & !is.na(testset$spatial_lag_square),]
       } 
       
       
@@ -222,14 +249,23 @@ calculate_rf_bin_f1 <- function (variable){
       mean_F1 <- mean(F1, na.rm = TRUE)
       
       temp_f1[j,] <- c(F1[1],F1[2],F1[3],F1[4],F1[5],F1[6],F1[7])
-    
+      
+      temp_acc[j,] <- c(precision[1],precision[2],precision[3],precision[4],precision[5],precision[6],precision[7])
+
     } 
     temp_f1[is.nan(temp_f1)] <- 0
     temp_f1 <- apply(temp_f1, 2, mean, na.rm=TRUE) 
+    
+    temp_acc[is.nan(temp_acc)] <- 0
+    temp_acc <- apply(temp_acc, 2, mean, na.rm=TRUE) 
         
-    f1_bin[i,] <- c(proportions[i], temp_f1[1],temp_f1[2],temp_f1[3],temp_f1[4],temp_f1[5],temp_f1[6],temp_f1[7])
+    f1_bin[i,] <- c("f1", temp_f1[1],temp_f1[2],temp_f1[3],temp_f1[4],temp_f1[5],temp_f1[6],temp_f1[7])
+    accuracy[i,] <- c("accuracy", temp_acc[1],temp_acc[2],temp_acc[3],temp_acc[4],temp_acc[5],temp_acc[6],temp_acc[7])
   }
   f1_bin <- as.data.frame(f1_bin)
+  accuracy <- as.data.frame(accuracy)
+  
+  f1_bin <- rbind(f1_bin, accuracy)
   return (f1_bin)
 }
 ```
@@ -243,6 +279,7 @@ rand_f1 <- calculate_rf_bin_f1 ("random")
 past_f1 <- calculate_rf_bin_f1 ("past")
 density_f1 <- calculate_rf_bin_f1 ("density")
 spatial_lag_f1 <- calculate_rf_bin_f1 ("spatial_lag")
+spatial_lag_sq <- calculate_rf_bin_f1 ("spatial_lag_sq")
 intro_f1 <- calculate_rf_bin_f1 ("introversion")
 eigen_cent_f1 <- calculate_rf_bin_f1 ("eigen_cent")
 entropy_f1 <- calculate_rf_bin_f1 ("entropy")
@@ -251,40 +288,17 @@ cdr_f1 <- calculate_rf_bin_f1 ("cdr")
 vol_f1 <- calculate_rf_bin_f1 ("volume")
 betweenness_f1 <- calculate_rf_bin_f1 ("betweenness")
 closeness_f1 <- calculate_rf_bin_f1 ("closeness")
-
-final_f1 <- calculate_rf_bin_f1 ("cdr+osm+lag")
-past_cdr <- calculate_rf_bin_f1 ("past_cdr")
-past_lag <- calculate_rf_bin_f1 ("past_lag")
-past_lag_cdr <- calculate_rf_bin_f1 ("past_lag_cdr")
-
 cdr_k2 <- calculate_rf_bin_f1 ("cdr_k2")
 cdr_k3 <- calculate_rf_bin_f1 ("cdr_k3")
 street_network <- calculate_rf_bin_f1 ("street_network")
 street_lag <- calculate_rf_bin_f1 ("street+lag")
-
 cdr_lag <- calculate_rf_bin_f1 ("cdr_lag")
 street_oa <- calculate_rf_bin_f1 ("street_oa")
 street_oa_lag <- calculate_rf_bin_f1 ("street+oa+lag")
 final_f1 <- calculate_rf_bin_f1 ("cdr+osm+lag")
-
-
-
-
-f1_table <- matrix(nrow=13, ncol=8)
-colnames(f1_table) <- c("", "1_poor","2","3","4","5","6","7_rich")
-f1_table[1,] <- unlist(c(c("random"), rand_f1[4, 2:8]))
-f1_table[2,] <- unlist(c(c("density"), density_f1[4, 2:8]))
-f1_table[3,] <- unlist(c(c("spatial_lag"), spatial_lag_f1[4, 2:8]))
-f1_table[4,] <- unlist(c(c("introversion"), intro_f1[4, 2:8]))
-f1_table[5,] <- unlist(c(c("eigen"), eigen_cent_f1[4, 2:8]))
-f1_table[6,] <- unlist(c(c("entropy"), entropy_f1[4, 2:8]))
-f1_table[7,] <- unlist(c(c("page_rank"), page_rank_f1[4, 2:8]))
-f1_table[8,] <- unlist(c(c("cdr"), cdr_f1[4, 2:8]))
-f1_table[9,] <- unlist(c(c("vol"), vol_f1[4, 2:8]))
-f1_table[10,] <- unlist(c(c("betweenness"), betweenness_f1[4, 2:8]))
-f1_table[11,] <- unlist(c(c("closeness"), closeness_f1[4, 2:8]))
-f1_table[12,] <- unlist(c(c("cdr+osm+lag"), final_f1[4, 2:8]))
-f1_table[13,] <- unlist(c(c("past"), past_f1[4, 2:8]))
+final2 <- calculate_rf_bin_f1 ("cdr+street+lag")
+final3 <- calculate_rf_bin_f1("cdr+cluster+street+lag")
+cluster3 <- calculate_rf_bin_f1 ("c3")
 
 ```
 
@@ -295,15 +309,15 @@ write.csv(rand_f1, "data/results/by_bin/rand_f1.csv")
 write.csv(past_f1, "data/results/by_bin/past_f1.csv")
 write.csv(density_f1, "data/results/by_bin/density_f1.csv")
 write.csv(spatial_lag_f1, "data/results/by_bin/spatial_lag_f1.csv")
+write.csv(spatial_lag_sq, "data/results/by_bin/spatial_lag_sq.csv")
 write.csv(intro_f1, "data/results/by_bin/intro_f1.csv")
 write.csv(eigen_cent_f1, "data/results/by_bin/eigen_cent_f1.csv")
+write.csv(entropy_f1, "data/results/by_bin/entropy_f1.csv")
 write.csv(page_rank_f1, "data/results/by_bin/page_rank_f1.csv")
 write.csv(cdr_f1, "data/results/by_bin/cdr_f1.csv")
 write.csv(vol_f1, "data/results/by_bin/vol_f1.csv")
 write.csv(betweenness_f1, "data/results/by_bin/betweenness_f1.csv")
 write.csv(closeness_f1, "data/results/by_bin/closeness_f1.csv")
-
-
 write.csv(cdr_k2, "data/results/by_bin/cdr_k2.csv")
 write.csv(cdr_k3, "data/results/by_bin/cdr_k3.csv")
 write.csv(street_network, "data/results/by_bin/street_network.csv")
@@ -312,5 +326,124 @@ write.csv(cdr_lag, "data/results/by_bin/cdr_lag.csv")
 write.csv(final_f1, "data/results/by_bin/final_f1.csv")
 write.csv(street_oa, "data/results/by_bin/street_oa.csv")
 write.csv(street_oa_lag, "data/results/by_bin/street_oa_lag.csv")
+write.csv(final2, "data/results/by_bin/final2.csv")
+write.csv(final3, "data/results/by_bin/final3.csv")
+write.csv(cluster3, "data/results/by_bin/cluster3.csv")
+```
+
+# Drawings
+```{r}
+density_f1 <- read.csv("data/results/by_bin/density_f1.csv")
+spatial_lag <- read.csv("data/results/by_bin/spatial_lag_sq.csv")
+vol_f1 <- read.csv("data/results/by_bin/vol_f1.csv")
+intro_f1 <- read.csv("data/results/by_bin/intro_f1.csv")
+eigen_cent_f1 <- read.csv("data/results/by_bin/eigen_cent_f1.csv")
+entropy_f1 <- read.csv("data/results/by_bin/entropy_f1.csv")
+page_rank_f1 <- read.csv("data/results/by_bin/page_rank_f1.csv")
+cdr_f1 <- read.csv("data/results/by_bin/cdr_f1.csv")
+cdr_k3 <- read.csv("data/results/by_bin/cdr_k3.csv")
+cdr_lag <- read.csv("data/results/by_bin/cdr_lag.csv")
+betweenness_f1 <- read.csv("data/results/by_bin/betweenness_f1.csv")
+closeness_f1 <- read.csv("data/results/by_bin/closeness_f1.csv")
+street <- read.csv("data/results/by_bin/street_network.csv")
+street_lag <- read.csv("data/results/by_bin/street_lag.csv")
+street_oa <- read.csv("data/results/by_bin/street_oa.csv")
+street_oa_lag <- read.csv("data/results/by_bin/street_oa_lag.csv")
+final_f1 <- read.csv("data/results/by_bin/final_f1.csv")
+final2 <- read.csv("data/results/by_bin/final2.csv")
+final3 <- read.csv("data/results/by_bin/final3.csv")
+
+f1_table <- matrix(nrow=19, ncol=8)
+colnames(f1_table) <- c("", "1_poor","2","3","4","5","6","7_rich")
+f1_table[1,] <- unlist(c(c("Population Density"), density_f1[4, 3:9]))
+f1_table[2,] <- unlist(c(c("Spatial Lag"), spatial_lag[4, 3:9]))
+f1_table[3,] <- unlist(c(c("Call Volume"), vol_f1[4, 3:9]))
+f1_table[4,] <- unlist(c(c("Introversion"), intro_f1[4, 3:9]))
+f1_table[5,] <- unlist(c(c("Eigen Centrality"), eigen_cent_f1[4, 3:9]))
+f1_table[6,] <- unlist(c(c("Entropy"), entropy_f1[4, 3:9]))
+f1_table[7,] <- unlist(c(c("PageRank"), page_rank_f1[4, 3:9]))
+f1_table[8,] <- unlist(c(c("CDR"), cdr_f1[4, 3:9]))
+f1_table[9,] <- unlist(c(c("CDR + Clusters"), cdr_k3[4, 3:9]))
+f1_table[10,] <- unlist(c(c("CDR + Spatial Lag"), cdr_lag[4, 3:9]))
+f1_table[11,] <- unlist(c(c("Betweenness Centrality"), betweenness_f1[4, 3:9]))
+f1_table[12,] <- unlist(c(c("Closeness Centrality"), closeness_f1[4, 3:9]))
+f1_table[13,] <- unlist(c(c("Street Network"), street[4, 3:9]))
+f1_table[14,] <- unlist(c(c("Street Network + Spatial Lag"), street_lag[4, 3:9]))
+f1_table[15,] <- unlist(c(c("Street Network + Offering Advantage (OA)"), street_oa[4, 3:9]))
+f1_table[16,] <- unlist(c(c("Street Network + OA + Spatial Lag"), street_oa_lag[4, 3:9]))
+f1_table[17,] <- unlist(c(c("CDR + Street Network + OA + Spatial Lag"), final_f1[4, 3:9]))
+f1_table[18,] <- unlist(c(c("CDR + Street Network + Spatial Lag"), final2[4, 3:9]))
+f1_table[19,] <- unlist(c(c("CDR + K + Street Network + Lag"), final3[4, 3:9]))
+
+f1_table2 <- matrix(nrow=19, ncol=8)
+colnames(f1_table2) <- c("", "1_poor","2","3","4","5","6","7_rich")
+f1_table2[1,] <- unlist(c(c("Population Density"), density_f1[5, 3:9]))
+f1_table2[2,] <- unlist(c(c("Spatial Lag"), spatial_lag[5, 3:9]))
+f1_table2[3,] <- unlist(c(c("Call Volume"), vol_f1[5, 3:9]))
+f1_table2[4,] <- unlist(c(c("Introversion"), intro_f1[5, 3:9]))
+f1_table2[5,] <- unlist(c(c("Eigen Centrality"), eigen_cent_f1[5, 3:9]))
+f1_table2[6,] <- unlist(c(c("Entropy"), entropy_f1[5, 3:9]))
+f1_table2[7,] <- unlist(c(c("PageRank"), page_rank_f1[5, 3:9]))
+f1_table2[8,] <- unlist(c(c("CDR"), cdr_f1[5, 3:9]))
+f1_table2[9,] <- unlist(c(c("CDR + Clusters"), cdr_k3[5, 3:9]))
+f1_table2[10,] <- unlist(c(c("CDR + Spatial Lag"), cdr_lag[5, 3:9]))
+f1_table2[11,] <- unlist(c(c("Betweenness Centrality"), betweenness_f1[5, 3:9]))
+f1_table2[12,] <- unlist(c(c("Closeness Centrality"), closeness_f1[5, 3:9]))
+f1_table2[13,] <- unlist(c(c("Street Network"), street[5, 3:9]))
+f1_table2[14,] <- unlist(c(c("Street Network + Spatial Lag"), street_lag[5, 3:9]))
+f1_table2[15,] <- unlist(c(c("Street Network + Offering Advantage (OA)"), street_oa[5, 3:9]))
+f1_table2[16,] <- unlist(c(c("Street Network + OA + Spatial Lag"), street_oa_lag[5, 3:9]))
+f1_table2[17,] <- unlist(c(c("CDR + Street Network + OA + Spatial Lag"), final_f1[5, 3:9]))
+f1_table2[18,] <- unlist(c(c("CDR + Street Network + Spatial Lag"), final2[5, 3:9]))
+f1_table2[19,] <- unlist(c(c("CDR + K + Street Network + Lag"), final3[5, 3:9]))
+
+
+# For accuracy
+f1_table <- matrix(nrow=19, ncol=8)
+colnames(f1_table) <- c("", "1_poor","2","3","4","5","6","7_rich")
+f1_table[1,] <- unlist(c(c("Population Density"), sapply(sapply(density_f1[2, 2:8], as.character), as.numeric)))
+f1_table[2,] <- unlist(c(c("Spatial Lag"), sapply(sapply(spatial_lag_sq[2, 2:8], as.character), as.numeric)))
+f1_table[3,] <- unlist(c(c("Call Volume"), sapply(sapply(vol_f1[2, 2:8], as.character), as.numeric)))
+f1_table[4,] <- unlist(c(c("Introversion"), sapply(sapply(intro_f1[2, 2:8], as.character), as.numeric)))
+f1_table[5,] <- unlist(c(c("Eigen Centrality"), sapply(sapply(eigen_cent_f1[2, 2:8], as.character), as.numeric)))
+f1_table[6,] <- unlist(c(c("Entropy"), sapply(sapply(entropy_f1[2, 2:8], as.character), as.numeric)))
+f1_table[7,] <- unlist(c(c("PageRank"), sapply(sapply(page_rank_f1[2, 2:8], as.character), as.numeric)))
+f1_table[8,] <- unlist(c(c("CDR"), sapply(sapply(cdr_f1[2, 2:8], as.character), as.numeric)))
+f1_table[9,] <- unlist(c(c("CDR + Clusters"), sapply(sapply(cdr_k3[2, 2:8], as.character), as.numeric)))
+f1_table[10,] <- unlist(c(c("CDR + Spatial Lag"), sapply(sapply(cdr_lag[2, 2:8], as.character), as.numeric)))
+f1_table[11,] <- unlist(c(c("Betweenness Centrality"), sapply(sapply(betweenness_f1[2, 2:8], as.character), as.numeric)))
+f1_table[12,] <- unlist(c(c("Closeness Centrality"), sapply(sapply(closeness_f1[2, 2:8], as.character), as.numeric)))
+f1_table[13,] <- unlist(c(c("Street Network"), sapply(sapply(street_network[2, 2:8], as.character), as.numeric)))
+f1_table[14,] <- unlist(c(c("Street Network + Spatial Lag"), sapply(sapply(street_lag[2, 2:8], as.character), as.numeric)))
+f1_table[15,] <- unlist(c(c("Street Network + Offering Advantage (OA)"), sapply(sapply(street_oa[2, 2:8], as.character), as.numeric)))
+f1_table[16,] <- unlist(c(c("Street Network + OA + Spatial Lag"), sapply(sapply(street_oa_lag[2, 2:8], as.character), as.numeric)))
+f1_table[17,] <- unlist(c(c("CDR + Street Network + OA + Spatial Lag"), sapply(sapply(final_f1[2, 2:8], as.character), as.numeric)))
+f1_table[18,] <- unlist(c(c("CDR + Street Network + Spatial Lag"), sapply(sapply(final2[2, 2:8], as.character), as.numeric)))
+f1_table[19,] <- unlist(c(c("CDR + K + Street Network + Lag"), sapply(sapply(final3[2, 2:8], as.character), as.numeric)))
+
+write.csv(rand_f1, "data/results/by_bin/rand_f1.csv")
+write.csv(past_f1, "data/results/by_bin/past_f1.csv")
+write.csv(density_f1, "data/results/by_bin/density_f1.csv")
+write.csv(spatial_lag_f1, "data/results/by_bin/spatial_lag_f1.csv")
+write.csv(spatial_lag_sq, "data/results/by_bin/spatial_lag_sq.csv")
+write.csv(intro_f1, "data/results/by_bin/intro_f1.csv")
+write.csv(eigen_cent_f1, "data/results/by_bin/eigen_cent_f1.csv")
+write.csv(entropy_f1, "data/results/by_bin/entropy_f1.csv")
+write.csv(page_rank_f1, "data/results/by_bin/page_rank_f1.csv")
+write.csv(cdr_f1, "data/results/by_bin/cdr_f1.csv")
+write.csv(vol_f1, "data/results/by_bin/vol_f1.csv")
+write.csv(betweenness_f1, "data/results/by_bin/betweenness_f1.csv")
+write.csv(closeness_f1, "data/results/by_bin/closeness_f1.csv")
+write.csv(cdr_k2, "data/results/by_bin/cdr_k2.csv")
+write.csv(cdr_k3, "data/results/by_bin/cdr_k3.csv")
+write.csv(street_network, "data/results/by_bin/street_network.csv")
+write.csv(street_lag, "data/results/by_bin/street_lag.csv")
+write.csv(cdr_lag, "data/results/by_bin/cdr_lag.csv")
+write.csv(final_f1, "data/results/by_bin/final_f1.csv")
+write.csv(street_oa, "data/results/by_bin/street_oa.csv")
+write.csv(street_oa_lag, "data/results/by_bin/street_oa_lag.csv")
+write.csv(final2, "data/results/by_bin/final2.csv")
+write.csv(final3, "data/results/by_bin/final3.csv")
+write.csv(cluster3, "data/results/by_bin/cluster3.csv")
 ```
 
